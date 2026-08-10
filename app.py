@@ -5,30 +5,29 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Your real Discord Webhook URL saved in Render's Environment Variables
-REAL_DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK_URL")
+# This dictionary matches the division name to the correct Webhook URL from Render
+WEBHOOKS = {
+    "leo": os.environ.get("WEBHOOK_LEO"),
+    "fire": os.environ.get("WEBHOOK_FIRE"),
+    "dot": os.environ.get("WEBHOOK_DOT"),
+    "dispatch": os.environ.get("WEBHOOK_DISPATCH")
+}
+
+# A fallback webhook just in case they type a division that doesn't exist
+DEFAULT_WEBHOOK = os.environ.get("WEBHOOK_DEFAULT")
 
 @app.route('/erlc-webhook', methods=['POST'])
 def erlc_webhook():
-    if not REAL_DISCORD_WEBHOOK:
-        return jsonify({"error": "Webhook URL missing"}), 500
-        
     data = request.json
     
-    # ERLC sends data in Discord embed format. If it's missing, ignore it.
     if not data or "embeds" not in data:
         return jsonify({"status": "ignored"}), 200
 
     try:
-        # Extract the description where ERLC puts the chat/command text
         description = data["embeds"][0].get("description", "")
-        
-        # Check if the shift command is anywhere in the message
         lower_desc = description.lower()
+        
         if ":log shift start" in lower_desc or ":log shift end" in lower_desc:
-            
-            # ERLC formats logs like: "**Player:** Username\n**Message:** Text"
-            # We use regex to carefully extract the exact player name and the text they typed
             player_match = re.search(r'\*\*Player:\*\* (.*)', description)
             text_match = re.search(r'\*\*(?:Command|Message):\*\* (.*)', description, re.IGNORECASE)
             
@@ -46,9 +45,20 @@ def erlc_webhook():
                     division = typed_text.replace(":log shift end", "").strip()
                 else:
                     return jsonify({"status": "ignored"}), 200
+                
+                # Figure out which webhook to use based on the division they typed!
+                target_webhook = WEBHOOKS.get(division)
+                
+                # If they typed a division we don't have, use the default webhook
+                if not target_webhook:
+                    target_webhook = DEFAULT_WEBHOOK
                     
-                # Format the custom, clean Discord Embed
-                color = 0x2ECC71 if action == "start" else 0xE74C3C # Green or Red
+                # If even the default is missing, we can't send it
+                if not target_webhook:
+                    return jsonify({"error": "No webhook configured for this division"}), 500
+
+                # Format the custom Discord Embed
+                color = 0x2ECC71 if action == "start" else 0xE74C3C 
                 title = "🟢 Shift Started" if action == "start" else "🔴 Shift Ended"
                 
                 payload = {
@@ -64,14 +74,13 @@ def erlc_webhook():
                     }]
                 }
                 
-                # Send our custom embed to the real Discord Webhook
-                requests.post(REAL_DISCORD_WEBHOOK, json=payload)
+                # Send the embed to the SPECIFIC channel's webhook
+                requests.post(target_webhook, json=payload)
                 return jsonify({"status": "success"}), 200
                 
     except Exception as e:
         print(f"Error processing webhook: {e}")
         
-    # If the message wasn't a shift log, we just return 200 OK so ERLC knows we got it, but we do nothing.
     return jsonify({"status": "ignored"}), 200
 
 if __name__ == '__main__':
