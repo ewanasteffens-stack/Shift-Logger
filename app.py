@@ -7,10 +7,11 @@ app = Flask(__name__)
 
 # This dictionary matches the division name to the correct Webhook URL from Render
 WEBHOOKS = {
-    "leo": os.environ.get("WEBHOOK_LEO"),
-    "fire": os.environ.get("WEBHOOK_FIRE"),
-    "dot": os.environ.get("WEBHOOK_DOT"),
-    "dispatch": os.environ.get("WEBHOOK_DISPATCH")
+    "dps": os.environ.get("WEBHOOK_DPS"),
+    "dpd": os.environ.get("WEBHOOK_DPD"),
+    "dfd": os.environ.get("WEBHOOK_DFD"),
+    "dcso": os.environ.get("WEBHOOK_DCSO")
+}
 }
 
 # A fallback webhook just in case they type a division that doesn't exist
