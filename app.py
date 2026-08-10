@@ -12,7 +12,6 @@ WEBHOOKS = {
     "dfd": os.environ.get("WEBHOOK_DFD"),
     "dcso": os.environ.get("WEBHOOK_DCSO")
 }
-}
 
 # A fallback webhook just in case they type a division that doesn't exist
 DEFAULT_WEBHOOK = os.environ.get("WEBHOOK_DEFAULT")
